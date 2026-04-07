@@ -1,7 +1,7 @@
 {
   "name": "HoneyTrack",
   "short_name": "HoneyTrack",
-  "start_url": "/",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#f59e0b",

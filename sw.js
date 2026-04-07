@@ -1,7 +1,7 @@
 const CACHE_NAME = 'honeytrack-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
+  './',
+  'index.html',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
