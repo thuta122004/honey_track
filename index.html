@@ -378,7 +378,7 @@
 
             if (drift < 60000) {
                 dot.classList.add('active');
-                label.innerText = "LIVE STATUS";
+                label.innerText = "LIVE";
             } else {
                 dot.classList.remove('active');
                 
@@ -393,7 +393,7 @@
                 }
             }
         }
-        
+
         function checkProximity() {
             if (!state.markers.me || !state.markers.partner) return;
             const dist = state.map.distance(state.markers.me.getLatLng(), state.markers.partner.getLatLng());
@@ -408,8 +408,15 @@
 
         function recenterMap() { 
             state.autoFollow = true; 
-            state.map.panTo(state.markers.me.getLatLng()); 
-            showNotification("Re-centering View");
+            
+            if (state.lastPartnerData && state.lastPartnerData.lat) {
+                state.map.panTo([state.lastPartnerData.lat, state.lastPartnerData.lng]);
+                showNotification("Focusing Partner");
+            }
+            else if (state.markers.me) {
+                state.map.panTo(state.markers.me.getLatLng()); 
+                showNotification("Your Location");
+            }
         }
         
         function logout() { 
