@@ -2,6 +2,7 @@
   "name": "HoneyTrack",
   "short_name": "HoneyTrack",
   "start_url": "index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#f59e0b",
