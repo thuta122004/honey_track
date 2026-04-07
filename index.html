@@ -10,6 +10,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#f59e0b">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/4511/4511507.png">
+
     <style>
         :root {
             --bg: #020617;
@@ -210,7 +217,7 @@
                 <span id="partner-name" class="name-label">INITIALIZING...</span>
                 <span id="last-seen" class="time-label">OFFLINE</span>
             </div>
-            <div id="partner-avatar" class="letter-avatar">?</div>
+            <div id="partner-avatar" class="letter-avatar">🍯</div>
         </div>
     </div>
 
@@ -334,7 +341,22 @@
             }
         };
 
+        let wakeLock = null;
+
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log("Wake Lock active: GPS will continue tracking.");
+                }
+            } catch (err) {
+                console.warn("Wake Lock failed:", err);
+            }
+        }
+
         function startTracking() {
+            requestWakeLock();
+            
             navigator.geolocation.watchPosition(async (pos) => {
                 const { latitude: lat, longitude: lng } = pos.coords;
                 state.markers.me.setLatLng([lat, lng]);
@@ -422,6 +444,14 @@
         
         function logout() { 
             supabaseClient.auth.signOut().then(() => location.reload()); 
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('PWA Service Worker Active'))
+                    .catch(err => console.error('PWA Registration Failed', err));
+            });
         }
     </script>
 </body>
