@@ -94,7 +94,16 @@
         .match-code-value { font-family: 'Monaco', monospace; font-size: 2rem; font-weight: 800; letter-spacing: 0.3em; color: var(--primary); }
 
         .hud { position: fixed; z-index: 500; pointer-events: none; display: flex; align-items: center; }
-        .top-hud { top: calc(1rem + env(safe-area-inset-top)); left: 1rem; right: 1rem; justify-content: flex-end; gap: 0.75rem; }
+        
+        .top-hud { 
+            top: calc(0.75rem + env(safe-area-inset-top)); 
+            left: 0.75rem; 
+            right: 0.75rem; 
+            justify-content: center; 
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
         .bottom-hud { bottom: calc(2rem + env(safe-area-inset-bottom)); right: 1.25rem; flex-direction: column; gap: 0.75rem; }
 
         .panel {
@@ -102,6 +111,7 @@
             padding: 0.5rem 0.75rem; border-radius: var(--radius-pill); border: 1px solid var(--border);
             display: flex; align-items: center; gap: 0.6rem; pointer-events: auto;
             box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4), 0 0 0 1px var(--border);
+            white-space: nowrap;
         }
 
         .letter-avatar { 
@@ -114,25 +124,32 @@
         .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #3f3f46; }
         .status-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
         
-        .info-stack { display: flex; flex-direction: column; line-height: 1.2; gap: 3px; }
+        .info-stack { display: flex; flex-direction: column; line-height: 1.2; gap: 2px; }
         
-        .name-label { font-size: 0.85rem; font-weight: 700; color: #fff; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .name-label { font-size: 0.85rem; font-weight: 700; color: #fff; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
         .time-label { font-size: 0.65rem; color: #94a3b8; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
 
         #together-badge {
-            background: linear-gradient(135deg, var(--accent), var(--primary));
-            border: none;
-            color: #000;
+            background: var(--card); 
+            backdrop-filter: var(--glass);
+            -webkit-backdrop-filter: var(--glass);
+            border: 1px solid var(--primary); 
+            border-radius: var(--radius-pill);
+            color: var(--primary); 
             display: none;
             padding: 0.5rem 1rem;
-            animation: heartBeat 2s infinite;
-            box-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.2), 
+                        inset 0 0 10px rgba(245, 158, 11, 0.1);
+            animation: heartBeat 2s infinite ease-in-out;
+            font-weight: 900;
+            letter-spacing: 0.05em;
+            z-index: 501;
         }
 
         @keyframes heartBeat {
-            0%, 100% { transform: scale(1); }
-            14% { transform: scale(1.05); }
-            28% { transform: scale(1); }
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.03); opacity: 0.8; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         .btn-round {
@@ -144,10 +161,14 @@
         .btn-round:active { transform: scale(0.92); }
 
         #toast {
-            position: fixed; top: 2.5rem; left: 50%; transform: translateX(-50%) translateY(-20px);
+            position: fixed; 
+            top: 5rem;
+            left: 50%; 
+            transform: translateX(-50%) translateY(-20px);
             background: #fff; color: #000; padding: 0.75rem 1.5rem;
             border-radius: var(--radius-pill); font-weight: 800; font-size: 0.75rem;
-            z-index: 2000; opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            z-index: 3000;
+            opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
             pointer-events: none; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             text-transform: uppercase; letter-spacing: 0.05em;
         }
@@ -219,6 +240,14 @@
             <span style="font-size: 0.7rem; font-weight: 900; letter-spacing: 0.05em;">PROXIMITY ALERT</span>
         </div>
 
+        <div class="panel" id="stats-panel" style="display: none;">
+            <i class="fa-solid fa-location-arrow" style="color: var(--accent);"></i>
+            <div class="info-stack">
+                <span id="distance-label" class="name-label">--</span>
+                <span class="time-label">AWAY</span>
+            </div>
+        </div>
+
         <div class="panel" id="partner-panel">
             <div id="dot-partner" class="status-dot"></div>
             <div class="info-stack">
@@ -266,7 +295,8 @@
             isSignUp: false, 
             autoFollow: true,
             currentThemeIndex: 0,
-            activeLayer: null
+            activeLayer: null,
+            lastPartnerData: null
         };
 
         function showNotification(text) {
@@ -279,11 +309,7 @@
         function toggleMapTheme() {
             state.currentThemeIndex = (state.currentThemeIndex + 1) % MAP_THEMES.length;
             const theme = MAP_THEMES[state.currentThemeIndex];
-            
-            if (state.activeLayer) {
-                state.map.removeLayer(state.activeLayer);
-            }
-            
+            if (state.activeLayer) state.map.removeLayer(state.activeLayer);
             state.activeLayer = L.tileLayer(theme.url).addTo(state.map);
             showNotification(`Theme: ${theme.name}`);
         }
@@ -311,7 +337,6 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const fullName = document.getElementById('full_name').value;
-            
             const originalText = document.getElementById('auth-text').innerText;
             setBtnLoading('auth-btn', true, originalText);
 
@@ -336,9 +361,7 @@
         async function initApp() {
             if (!state.map) {
                 state.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([0, 0], 2);
-                
                 state.activeLayer = L.tileLayer(MAP_THEMES[0].url).addTo(state.map);
-                
                 state.markers.me = L.circleMarker([0, 0], { color: '#00d2ff', fillColor: '#00d2ff', fillOpacity: 1, radius: 6, weight: 12, opacity: 0.2 }).addTo(state.map);
                 state.markers.partner = L.circleMarker([0, 0], { color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1, radius: 6, weight: 12, opacity: 0.2 }).addTo(state.map);
                 state.map.on('movestart', () => state.autoFollow = false);
@@ -350,7 +373,6 @@
                 const { data: newProfile } = await supabaseClient.from('profiles').insert([{ id: state.user.id, full_name: state.user.user_metadata?.full_name || "New User", match_code: code }]).select().single();
                 profile = newProfile;
             }
-
             state.profile = profile;
 
             if (!profile.partner_id) {
@@ -363,26 +385,15 @@
             }
 
             state.map.on('zoomstart', () => {
-                [state.markers.me, state.markers.partner].forEach(m => {
-                    if(m) m.setStyle({ opacity: 0, fillOpacity: 0 });
-                });
+                [state.markers.me, state.markers.partner].forEach(m => { if(m) m.setStyle({ opacity: 0, fillOpacity: 0 }); });
             });
 
             state.map.on('zoomend', () => {
                 const zoom = state.map.getZoom();
-                
                 const dynamicWeight = zoom > 16 ? 4 : 6;
                 const dynamicRadius = zoom > 16 ? 4 : 5;
-
                 [state.markers.me, state.markers.partner].forEach(m => {
-                    if(m) {
-                        m.setStyle({ 
-                            opacity: 0.3, 
-                            fillOpacity: 1, 
-                            weight: dynamicWeight, 
-                            radius: dynamicRadius 
-                        });
-                    }
+                    if(m) m.setStyle({ opacity: 0.3, fillOpacity: 1, weight: dynamicWeight, radius: dynamicRadius });
                 });
             });
         }
@@ -390,11 +401,8 @@
         document.getElementById('link-btn').onclick = async () => {
             const code = document.getElementById('join-code-input').value.toUpperCase().trim();
             if(!code) return showNotification("Please enter a valid code");
-
             setBtnLoading('link-btn', true, "SYNCHRONIZE DEVICES");
-
             const { data: partner } = await supabaseClient.from('profiles').select('id').eq('match_code', code).single();
-            
             if (partner && partner.id !== state.user.id) {
                 await supabaseClient.from('profiles').update({ partner_id: partner.id }).eq('id', state.user.id);
                 await supabaseClient.from('profiles').update({ partner_id: state.user.id }).eq('id', partner.id);
@@ -407,30 +415,19 @@
         };
 
         let wakeLock = null;
-
         async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    console.log("Wake Lock active: GPS will continue tracking.");
-                }
-            } catch (err) {
-                console.warn("Wake Lock failed:", err);
-            }
+            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
         }
 
         function startTracking() {
             requestWakeLock();
-            
             navigator.geolocation.watchPosition(async (pos) => {
                 const { latitude: lat, longitude: lng } = pos.coords;
                 state.markers.me.setLatLng([lat, lng]);
                 if (state.autoFollow) state.map.setView([lat, lng], 15);
                 checkProximity();
                 await supabaseClient.from('locations').upsert({ user_id: state.user.id, lat, lng, updated_at: new Date().toISOString() });
-            }, (err) => {
-                showNotification("GPS Signal Interrupted");
-            }, { enableHighAccuracy: true });
+            }, null, { enableHighAccuracy: true });
         }
 
         async function syncPartner(pId) {
@@ -441,11 +438,10 @@
             }
             const { data: pLoc } = await supabaseClient.from('locations').select('*').eq('user_id', pId).maybeSingle();
             if (pLoc) updatePartnerUI(pLoc);
-            
             supabaseClient.channel('live-p').on('postgres_changes', { event: '*', schema: 'public', table: 'locations', filter: `user_id=eq.${pId}` }, payload => updatePartnerUI(payload.new)).subscribe();
         }
 
-       function updatePartnerUI(data) {
+        function updatePartnerUI(data) {
             if (!data || !data.lat || !data.updated_at) return;
             state.markers.partner.setLatLng([data.lat, data.lng]);
             state.lastPartnerData = data;
@@ -456,11 +452,9 @@
         function refreshPartnerStatus() {
             const data = state.lastPartnerData;
             if (!data) return;
-
             const lastSeen = new Date(data.updated_at).getTime();
             const now = Date.now();
             const drift = now - lastSeen;
-
             const dot = document.getElementById('dot-partner');
             const label = document.getElementById('last-seen');
 
@@ -469,24 +463,36 @@
                 label.innerText = "LIVE";
             } else {
                 dot.classList.remove('active');
-                
-                if (drift < 3600000) {
-                    const mins = Math.floor(drift / 60000);
-                    label.innerText = `AWAY (${mins}M AGO)`;
-                } else if (drift < 86400000) {
-                    const hrs = Math.floor(drift / 3600000);
-                    label.innerText = `AWAY (${hrs}H AGO)`;
-                } else {
-                    label.innerText = "OFFLINE";
-                }
+                if (drift < 3600000) label.innerText = `AWAY (${Math.floor(drift / 60000)}M AGO)`;
+                else if (drift < 86400000) label.innerText = `AWAY (${Math.floor(drift / 3600000)}H AGO)`;
+                else label.innerText = "OFFLINE";
             }
         }
 
         function checkProximity() {
             if (!state.markers.me || !state.markers.partner) return;
-            const dist = state.map.distance(state.markers.me.getLatLng(), state.markers.partner.getLatLng());
-            const together = dist < 35;
-            document.getElementById('together-badge').style.display = together ? 'flex' : 'none';
+
+            const myPos = state.markers.me.getLatLng();
+            const partnerPos = state.markers.partner.getLatLng();
+            const distMeters = state.map.distance(myPos, partnerPos);
+            const distKm = distMeters / 1000;
+
+            const statsPanel = document.getElementById('stats-panel');
+            const distLabel = document.getElementById('distance-label');
+            const togetherBadge = document.getElementById('together-badge');
+
+            if (distMeters < 35) {
+                togetherBadge.style.display = 'flex';
+                statsPanel.style.display = 'none';
+            } else {
+                togetherBadge.style.display = 'none';
+                statsPanel.style.display = 'flex';
+                if (distMeters < 1000) {
+                    distLabel.innerText = `${Math.round(distMeters)}M`;
+                } else {
+                    distLabel.innerText = `${distKm.toFixed(2)}KM`;
+                }
+            }
         }
 
         function copyCode() {
@@ -496,26 +502,20 @@
 
         function recenterMap() { 
             state.autoFollow = true; 
-            
             if (state.lastPartnerData && state.lastPartnerData.lat) {
-                state.map.flyTo([state.lastPartnerData.lat, state.lastPartnerData.lng], 15, { duration: 1.5 });
+                state.map.flyTo([state.lastPartnerData.lat, state.lastPartnerData.lng], 15);
                 showNotification("Focusing Partner");
-            }
-            else if (state.markers.me) {
-                state.map.flyTo(state.markers.me.getLatLng(), 15, { duration: 1.5 }); 
+            } else if (state.markers.me) {
+                state.map.flyTo(state.markers.me.getLatLng(), 15); 
                 showNotification("Your Location");
             }
         }
         
-        function logout() { 
-            supabaseClient.auth.signOut().then(() => location.reload()); 
-        }
+        function logout() { supabaseClient.auth.signOut().then(() => location.reload()); }
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('PWA Service Worker Active'))
-                    .catch(err => console.error('PWA Registration Failed', err));
+                navigator.serviceWorker.register('sw.js').catch(err => console.error('PWA Failed', err));
             });
         }
     </script>
