@@ -361,6 +361,30 @@
                 startTracking();
                 syncPartner(profile.partner_id);
             }
+
+            state.map.on('zoomstart', () => {
+                [state.markers.me, state.markers.partner].forEach(m => {
+                    if(m) m.setStyle({ opacity: 0, fillOpacity: 0 });
+                });
+            });
+
+            state.map.on('zoomend', () => {
+                const zoom = state.map.getZoom();
+                
+                const dynamicWeight = zoom > 16 ? 4 : 6;
+                const dynamicRadius = zoom > 16 ? 4 : 5;
+
+                [state.markers.me, state.markers.partner].forEach(m => {
+                    if(m) {
+                        m.setStyle({ 
+                            opacity: 0.3, 
+                            fillOpacity: 1, 
+                            weight: dynamicWeight, 
+                            radius: dynamicRadius 
+                        });
+                    }
+                });
+            });
         }
 
         document.getElementById('link-btn').onclick = async () => {
