@@ -230,6 +230,9 @@
     </div>
 
     <div class="hud bottom-hud">
+        <div class="btn-round" onclick="toggleMapTheme()" id="theme-btn">
+            <i class="fa-solid fa-layer-group"></i>
+        </div>
         <div class="btn-round" onclick="logout()" style="color: var(--danger)">
             <i class="fa-solid fa-power-off"></i>
         </div>
@@ -248,13 +251,41 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyeWFqc29heHNhZXJhdHJ0aGZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NjM1NzMsImV4cCI6MjA5MTEzOTU3M30.x6qEOFfWREhi7dcqYGKWdvkf9Wct_ThJSeX5Ys44f6g';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let state = { user: null, profile: null, map: null, markers: {}, isSignUp: false, autoFollow: true };
+        const MAP_THEMES = [
+            { name: 'Dark', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' },
+            { name: 'Light', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png' },
+            { name: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
+            { name: 'Voyager', url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png' }
+        ];
+
+        let state = { 
+            user: null, 
+            profile: null, 
+            map: null, 
+            markers: {}, 
+            isSignUp: false, 
+            autoFollow: true,
+            currentThemeIndex: 0,
+            activeLayer: null
+        };
 
         function showNotification(text) {
             const t = document.getElementById('toast');
             t.innerText = text;
             t.classList.add('show');
             setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function toggleMapTheme() {
+            state.currentThemeIndex = (state.currentThemeIndex + 1) % MAP_THEMES.length;
+            const theme = MAP_THEMES[state.currentThemeIndex];
+            
+            if (state.activeLayer) {
+                state.map.removeLayer(state.activeLayer);
+            }
+            
+            state.activeLayer = L.tileLayer(theme.url).addTo(state.map);
+            showNotification(`Theme: ${theme.name}`);
         }
 
         function setBtnLoading(btnId, isLoading, originalText) {
@@ -305,7 +336,9 @@
         async function initApp() {
             if (!state.map) {
                 state.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([0, 0], 2);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(state.map);
+                
+                state.activeLayer = L.tileLayer(MAP_THEMES[0].url).addTo(state.map);
+                
                 state.markers.me = L.circleMarker([0, 0], { color: '#00d2ff', fillColor: '#00d2ff', fillOpacity: 1, radius: 6, weight: 12, opacity: 0.2 }).addTo(state.map);
                 state.markers.partner = L.circleMarker([0, 0], { color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1, radius: 6, weight: 12, opacity: 0.2 }).addTo(state.map);
                 state.map.on('movestart', () => state.autoFollow = false);
